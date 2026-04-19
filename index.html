@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>StudyBuddy</title>
+
+<style>
+body { font-family: Arial; margin:0; background:#eef4fb; }
+header { background:#2d6cdf; color:white; padding:15px; text-align:center; }
+.container { max-width:420px; margin:auto; padding:15px; }
+.card { background:white; padding:15px; border-radius:10px; margin-bottom:10px; }
+input,button { width:100%; padding:10px; margin-top:5px; }
+button { background:#2d6cdf; color:white; border:none; }
+.task { padding:10px; border-bottom:1px solid #ddd; }
+.completed { text-decoration:line-through; color:gray; }
+</style>
+</head>
+
+<body>
+
+<header>📘 StudyBuddy (Online)</header>
+
+<div class="container">
+
+<!-- LOGIN -->
+<div id="loginScreen" class="card">
+    <h3>Login</h3>
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="register()">Register</button>
+    <button onclick="login()">Login</button>
+</div>
+
+<!-- APP -->
+<div id="appScreen" style="display:none;">
+    <div class="card">
+        <h3 id="welcome"></h3>
+        <button onclick="logout()">Logout</button>
+        <h4 id="progress"></h4>
+    </div>
+
+    <div class="card">
+        <input id="taskInput" placeholder="Task">
+        <input type="date" id="dateInput">
+        <button onclick="addTask()">Add Task</button>
+        <div id="taskList"></div>
+    </div>
+</div>
+
+</div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+import {
+  getFirestore, collection, addDoc,
+  getDocs, updateDoc, doc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCK0YZYfCpcZX9pyHaK1IO9my_SzLA6Gjo",
+    authDomain: "studybuddy-8f753.firebaseapp.com",
+    projectId: "studybuddy-8f753",
+    storageBucket: "studybuddy-8f753.firebasestorage.app",
+    messagingSenderId: "280105465069",
+    appId: "1:280105465069:web:e63982536ee1e36fad88e4",
+    measurementId: "G-GWKWRG6EEZ"
+  };
+
+// INIT
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// AUTH STATE
+onAuthStateChanged(auth, user => {
+    if (user) {
+        showApp(user);
+    } else {
+        loginScreen.style.display = "block";
+        appScreen.style.display = "none";
+    }
+});
+
+// REGISTER
+window.register = async function() {
+    try {
+        await createUserWithEmailAndPassword(auth, email.value, password.value);
+        alert("Registered!");
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+// LOGIN
+window.login = async function() {
+    try {
+        await signInWithEmailAndPassword(auth, email.value, password.value);
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+// LOGOUT
+window.logout = function() {
+    signOut(auth);
+}
+
+// SHOW APP
+async function showApp(user) {
+    loginScreen.style.display = "none";
+    appScreen.style.display = "block";
+    welcome.innerText = "Hi, " + user.email;
+
+    loadTasks(user.uid);
+}
+
+// ADD TASK
+window.addTask = async function() {
+    let text = taskInput.value;
+    let date = dateInput.value;
+
+    if (!text || !date) return alert("Fill all");
+
+    await addDoc(collection(db, "tasks"), {
+        uid: auth.currentUser.uid,
+        text,
+        date,
+        done:false
+    });
+
+    taskInput.value = "";
+    dateInput.value = "";
+
+    loadTasks(auth.currentUser.uid);
+}
+
+// LOAD TASKS
+async function loadTasks(uid) {
+    let list = taskList;
+    list.innerHTML = "";
+
+    let querySnapshot = await getDocs(collection(db, "tasks"));
+
+    let total = 0, done = 0;
+
+    querySnapshot.forEach(docSnap => {
+        let t = docSnap.data();
+
+        if (t.uid === uid) {
+            total++;
+            if (t.done) done++;
+
+            let div = document.createElement("div");
+            div.className = "task" + (t.done ? " completed":"");
+
+            div.innerHTML = `
+                ${t.text} (${t.date})
+                <button onclick="completeTask('${docSnap.id}')">✔</button>
+            `;
+
+            list.appendChild(div);
+        }
+    });
+
+    progress.innerText = `Completed: ${done} / ${total}`;
+}
+
+// COMPLETE TASK
+window.completeTask = async function(id) {
+    const ref = doc(db, "tasks", id);
+    await updateDoc(ref, { done:true });
+
+    loadTasks(auth.currentUser.uid);
+}
+</script>
+
+</body>
+</html>
