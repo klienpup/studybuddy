@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>StudyBuddy</title>
+
+<style>
+body {
+    font-family: Arial;
+    margin: 0;
+    background: #eef4fb;
+}
+
+.dark {
+    background: #1e1e1e;
+    color: white;
+}
+
+header {
+    background: #2d6cdf;
+    color: white;
+    padding: 15px;
+    text-align: center;
+}
+
+.container {
+    max-width: 500px;
+    margin: 20px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.dark .container {
+    background: #2b2b2b;
+}
+
+input, button {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+}
+
+button {
+    background: #2d6cdf;
+    color: white;
+    border: none;
+}
+
+.hidden {
+    display: none;
+}
+
+.task {
+    border-bottom: 1px solid #ddd;
+    padding: 10px;
+}
+
+.completed {
+    text-decoration: line-through;
+}
+
+.top {
+    display: flex;
+    justify-content: space-between;
+}
+</style>
+</head>
+
+<body>
+
+<header>📘 StudyBuddy</header>
+
+<!-- LOGIN -->
+<div class="container" id="loginScreen">
+    <h3>Login</h3>
+    <input id="username" placeholder="Enter username">
+    <button onclick="login()">Login</button>
+</div>
+
+<!-- APP -->
+<div class="container hidden" id="appScreen">
+
+    <div class="top">
+        <h3 id="welcome"></h3>
+        <button onclick="logout()">Logout</button>
+    </div>
+
+    <input id="taskInput" placeholder="Task">
+    <input type="date" id="dateInput">
+    <button onclick="addTask()">Add Task</button>
+
+    <div id="taskList"></div>
+</div>
+
+<script>
+let currentUser = localStorage.getItem("currentUser");
+
+if (currentUser) {
+    showApp(currentUser);
+}
+
+function login() {
+    let username = document.getElementById("username").value;
+    if (!username) return alert("Enter username");
+
+    localStorage.setItem("currentUser", username);
+    showApp(username);
+}
+
+function logout() {
+    localStorage.removeItem("currentUser");
+    location.reload();
+}
+
+function showApp(user) {
+    document.getElementById("loginScreen").classList.add("hidden");
+    document.getElementById("appScreen").classList.remove("hidden");
+    document.getElementById("welcome").innerText = "Hi, " + user;
+
+    loadTasks();
+}
+
+function getUserTasks() {
+    return JSON.parse(localStorage.getItem("tasks_" + currentUser)) || [];
+}
+
+function saveUserTasks(tasks) {
+    localStorage.setItem("tasks_" + currentUser, JSON.stringify(tasks));
+}
+
+function addTask() {
+    let text = taskInput.value;
+    let date = dateInput.value;
+
+    if (!text || !date) return alert("Fill all");
+
+    let tasks = getUserTasks();
+    tasks.push({ text, date, done: false });
+
+    saveUserTasks(tasks);
+    loadTasks();
+
+    taskInput.value = "";
+    dateInput.value = "";
+}
+
+function loadTasks() {
+    currentUser = localStorage.getItem("currentUser");
+    let tasks = getUserTasks();
+
+    let list = document.getElementById("taskList");
+    list.innerHTML = "";
+
+    tasks.forEach((t, i) => {
+        let div = document.createElement("div");
+        div.className = "task" + (t.done ? " completed" : "");
+
+        div.innerHTML = `
+            ${t.text} (${t.date})<br>
+            <button onclick="completeTask(${i})">Complete</button>
+        `;
+
+        list.appendChild(div);
+    });
+}
+
+function completeTask(i) {
+    let tasks = getUserTasks();
+    tasks[i].done = true;
+
+    saveUserTasks(tasks);
+    loadTasks();
+}
+</script>
+
+</body>
+</html>
